@@ -4,10 +4,10 @@ from typing import Union, List
 import torch
 from torch.utils import data
 
+import transforms as T
+from my_dataset import IHDataset
 from src import u2net_full
 from train_utils import evaluate
-from my_dataset import DUTSDataset
-import transforms as T
 
 
 class SODPresetEval:
@@ -26,7 +26,7 @@ def main(args):
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     assert os.path.exists(args.weights), f"weights {args.weights} not found."
 
-    val_dataset = DUTSDataset(args.data_path, train=False, transforms=SODPresetEval([320, 320]))
+    val_dataset = IHDataset(args.data_path, train=False, transforms=SODPresetEval([320, 320]))
 
     num_workers = 4
     val_data_loader = data.DataLoader(val_dataset,

@@ -1,4 +1,5 @@
 from typing import Union, List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -160,12 +161,16 @@ class U2Net(nn.Module):
             x = decode_outputs.pop()
             x = F.interpolate(m(x), size=[h, w], mode='bilinear', align_corners=False)
             side_outputs.insert(0, x)
-
+            # side_outputs = [side1, side2, side3, side4, side5, side6]
         x = self.out_conv(torch.concat(side_outputs, dim=1))
+        # x = side0
 
         if self.training:
-            # do not use torch.sigmoid for amp safe
-            return [x] + side_outputs
+            out_list = []
+            for x_ in [x] + side_outputs:
+                out_list.append(x_)  # do not use torch.sigmoid for amp safe
+            return out_list
+            # out_list = [side0, side1, side2, side3, side4, side5, side6]
         else:
             return torch.sigmoid(x)
 

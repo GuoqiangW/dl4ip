@@ -4,26 +4,26 @@ import cv2
 import torch.utils.data as data
 
 
-class DUTSDataset(data.Dataset):
+class IHDataset(data.Dataset):
     def __init__(self, root: str, train: bool = True, transforms=None):
         assert os.path.exists(root), f"path '{root}' does not exist."
         if train:
-            self.image_root = os.path.join(root, "DUTS-TR", "DUTS-TR-Image")
-            self.mask_root = os.path.join(root, "DUTS-TR", "DUTS-TR-Mask")
+            self.image_root = os.path.join(root, "IH", "train_img")
+            self.mask_root = os.path.join(root, "IH", "train_mask")
         else:
-            self.image_root = os.path.join(root, "DUTS-TE", "DUTS-TE-Image")
-            self.mask_root = os.path.join(root, "DUTS-TE", "DUTS-TE-Mask")
+            self.image_root = os.path.join(root, "IH", "val_img")
+            self.mask_root = os.path.join(root, "IH", "val_mask")
         assert os.path.exists(self.image_root), f"path '{self.image_root}' does not exist."
         assert os.path.exists(self.mask_root), f"path '{self.mask_root}' does not exist."
 
-        image_names = [p for p in os.listdir(self.image_root) if p.endswith(".jpg")]
+        image_names = [p for p in os.listdir(self.image_root) if p.endswith(".png")]
         mask_names = [p for p in os.listdir(self.mask_root) if p.endswith(".png")]
         assert len(image_names) > 0, f"not find any images in {self.image_root}."
 
         # check images and mask
         re_mask_names = []
         for p in image_names:
-            mask_name = p.replace(".jpg", ".png")
+            mask_name = p
             assert mask_name in mask_names, f"{p} has no corresponding mask."
             re_mask_names.append(mask_name)
         mask_names = re_mask_names
@@ -71,10 +71,10 @@ def cat_list(images, fill_value=0):
 
 
 if __name__ == '__main__':
-    train_dataset = DUTSDataset("./", train=True)
+    train_dataset = IHDataset("./", train=True)
     print(len(train_dataset))
 
-    val_dataset = DUTSDataset("./", train=False)
+    val_dataset = IHDataset("./", train=False)
     print(len(val_dataset))
 
     i, t = train_dataset[0]

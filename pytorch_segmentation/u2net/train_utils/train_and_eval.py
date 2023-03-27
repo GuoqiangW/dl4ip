@@ -1,13 +1,19 @@
 import math
+
 import torch
-from torch.nn import functional as F
 import train_utils.distributed_utils as utils
+from torch.nn import functional as F
+
+from .dice_coefficient_loss import dice_loss, build_target
 
 
-def criterion(inputs, target):
+def criterion(inputs, target, num_classes: int = 2, dice: bool = True, ignore_index: int = -100):
     losses = [F.binary_cross_entropy_with_logits(inputs[i], target) for i in range(len(inputs))]
     total_loss = sum(losses)
-
+    if dice is True:
+        target = torch.as_tensor((target > 0.5), dtype=torch.int64).squeeze(dim=1)
+        dice_target = build_target(target, num_classes, ignore_index)
+        total_loss += dice_loss(inputs[0], dice_target, multiclass=False)
     return total_loss
 
 
@@ -15,6 +21,8 @@ def evaluate(model, data_loader, device):
     model.eval()
     mae_metric = utils.MeanAbsoluteError()
     f1_metric = utils.F1Score()
+    confmat = utils.ConfusionMatrix(num_classes=2)
+    dice_metric = utils.DiceCoefficient()
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
     with torch.no_grad():
@@ -22,18 +30,17 @@ def evaluate(model, data_loader, device):
             images, targets = images.to(device), targets.to(device)
             output = model(images)
 
-            # post norm
-            # ma = torch.max(output)
-            # mi = torch.min(output)
-            # output = (output - mi) / (ma - mi)
-
             mae_metric.update(output, targets)
             f1_metric.update(output, targets)
+            confmat.update(targets.flatten(), torch.as_tensor((output > 0.5), dtype=torch.int64).flatten())
+            dice_metric.update(output, targets)
 
         mae_metric.gather_from_all_processes()
         f1_metric.reduce_from_all_processes()
+        confmat.reduce_from_all_processes()
+        dice_metric.reduce_from_all_processes()
 
-    return mae_metric, f1_metric
+    return mae_metric, f1_metric, confmat, dice_metric.value.item()
 
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, print_freq=10, scaler=None):

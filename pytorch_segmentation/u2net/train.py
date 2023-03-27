@@ -1,24 +1,23 @@
+import datetime
 import os
 import time
-import datetime
 from typing import Union, List
 
 import torch
 from torch.utils import data
 
+import transforms as T
+from my_dataset import IHDataset
 from src import u2net_full
 from train_utils import train_one_epoch, evaluate, get_params_groups, create_lr_scheduler
-from my_dataset import DUTSDataset
-import transforms as T
 
 
 class SODPresetTrain:
-    def __init__(self, base_size: Union[int, List[int]], crop_size: int,
-                 hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    def __init__(self, base_size: Union[int, List[int]],
+                 hflip_prob=0.5, mean=(0.223, 0.223, 0.223), std=(0.171, 0.171, 0.171)):
         self.transforms = T.Compose([
             T.ToTensor(),
             T.Resize(base_size, resize_mask=True),
-            T.RandomCrop(crop_size),
             T.RandomHorizontalFlip(hflip_prob),
             T.Normalize(mean=mean, std=std)
         ])
@@ -28,10 +27,9 @@ class SODPresetTrain:
 
 
 class SODPresetEval:
-    def __init__(self, base_size: Union[int, List[int]], mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    def __init__(self, mean=(0.223, 0.223, 0.223), std=(0.171, 0.171, 0.171)):
         self.transforms = T.Compose([
             T.ToTensor(),
-            T.Resize(base_size, resize_mask=False),
             T.Normalize(mean=mean, std=std),
         ])
 
@@ -46,8 +44,8 @@ def main(args):
     # 用来保存训练以及验证过程中信息
     results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
-    train_dataset = DUTSDataset(args.data_path, train=True, transforms=SODPresetTrain([320, 320], crop_size=288))
-    val_dataset = DUTSDataset(args.data_path, train=False, transforms=SODPresetEval([320, 320]))
+    train_dataset = IHDataset(args.data_path, train=True, transforms=SODPresetTrain([256, 480]))
+    val_dataset = IHDataset(args.data_path, train=False, transforms=SODPresetEval())
 
     num_workers = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])
     train_data_loader = data.DataLoader(train_dataset,
@@ -98,9 +96,11 @@ def main(args):
 
         if epoch % args.eval_interval == 0 or epoch == args.epochs - 1:
             # 每间隔eval_interval个epoch验证一次，减少验证频率节省训练时间
-            mae_metric, f1_metric = evaluate(model, val_data_loader, device=device)
+            mae_metric, f1_metric, confmat, dice = evaluate(model, val_data_loader, device=device)
             mae_info, f1_info = mae_metric.compute(), f1_metric.compute()
-            print(f"[epoch: {epoch}] val_MAE: {mae_info:.3f} val_maxF1: {f1_info:.3f}")
+            val_info = str(confmat)
+            print(val_info)
+            print(f"[epoch: {epoch}] val_MAE: {mae_info:.3f} val_maxF1: {f1_info:.3f} val_dice: {dice:.3f}")
             # write into txt
             with open(results_file, "a") as f:
                 # 记录每个epoch对应的train_loss、lr以及验证集各指标
@@ -127,7 +127,7 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="pytorch u2net training")
 
-    parser.add_argument("--data-path", default="./", help="DUTS root")
+    parser.add_argument("--data-path", default="./", help="IH root")
     parser.add_argument("--device", default="cuda", help="training device")
     parser.add_argument("-b", "--batch-size", default=16, type=int)
     parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,

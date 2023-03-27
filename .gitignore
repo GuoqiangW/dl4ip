@@ -7,6 +7,7 @@ flower_data
 *.pth
 *.pt
 *.jpg
+*.png
 *.ckpt.*
 *.ckpt
 *.config

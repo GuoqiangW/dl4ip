@@ -1,16 +1,16 @@
-import time
-import os
 import datetime
+import os
+import time
 from typing import Union, List
 
 import torch
 from torch.utils import data
 
+import transforms as T
+from my_dataset import IHDataset
 from src import u2net_full
 from train_utils import (train_one_epoch, evaluate, init_distributed_mode, save_on_master, mkdir,
                          create_lr_scheduler, get_params_groups)
-from my_dataset import DUTSDataset
-import transforms as T
 
 
 class SODPresetTrain:
@@ -49,8 +49,8 @@ def main(args):
     # 用来保存训练以及验证过程中信息
     results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
-    train_dataset = DUTSDataset(args.data_path, train=True, transforms=SODPresetTrain([320, 320], crop_size=288))
-    val_dataset = DUTSDataset(args.data_path, train=False, transforms=SODPresetEval([320, 320]))
+    train_dataset = IHDataset(args.data_path, train=True, transforms=SODPresetTrain([320, 320], crop_size=288))
+    val_dataset = IHDataset(args.data_path, train=False, transforms=SODPresetEval([320, 320]))
 
     print("Creating data loaders")
     if args.distributed:

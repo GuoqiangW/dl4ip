@@ -1,5 +1,10 @@
 # U2-Net(Going Deeper with Nested U-Structure for Salient Object Detection)
 
+## 项目介绍
+- 该项目是在我导原有的基础上，新增dice、MIoU、dice_loss等，使用血管瘤超声数据集进行训练（详见 https://www.datafountain.cn/competitions/533）
+- 目前仅实现了相关指标的计算，未进行进一步优化，训练效果并不太好，训练100个Epoch后，dice系数在0.7+
+- web.py 新增了gradio演示，版本3.10.1
+
 ## 该项目主要是来自官方的源码
 - https://github.com/xuebinqin/U-2-Net
 - 注意，该项目是针对显著性目标检测领域（Salient Object Detection / SOD）
